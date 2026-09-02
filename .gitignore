@@ -1,0 +1,45 @@
+# env & secrets
+.env
+backend/.env
+*.key
+*.pem
+
+# Go
+backend/bin/
+backend/tmp/
+
+# Supabase local
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Xcode
+*.xcuserstate
+*.xcuserdata/
+DerivedData/
+*.xccheckout
+
+# Windows
+windows/.vs/
+windows/**/bin/
+windows/**/obj/
+
+# Ubuntu
+ubuntu/build/
+ubuntu/.flatpak-builder/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+
+# iOS (same as Xcode, plus)
+ios/Pods/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log

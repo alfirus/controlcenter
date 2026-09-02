@@ -1,0 +1,26 @@
+{
+  "colors": {
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "gray900": "#1A1A1A",
+    "gray600": "#666666",
+    "gray400": "#888888",
+    "gray100": "#F2F2F2",
+    "border": "#E5E5E5",
+    "borderDark": "#2A2A2A"
+  },
+  "spacing": [4, 8, 16, 24, 32, 48],
+  "radius": { "sm": 6, "md": 10, "lg": 14 },
+  "typography": {
+    "sans": "Inter",
+    "mono": "JetBrains Mono",
+    "sizes": { "xs": 11, "sm": 12, "base": 13, "lg": 15, "xl": 20, "2xl": 26 },
+    "weights": { "regular": 400, "medium": 500, "semibold": 600, "bold": 700 }
+  },
+  "layout": {
+    "sidebar": 240,
+    "rightPanel": 320,
+    "rowHeight": 32,
+    "avatarSize": 28
+  }
+}

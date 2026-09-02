@@ -1,0 +1,3 @@
+plugins { id 'com.android.application' }
+android { compileSdk 34; defaultConfig { applicationId "com.alfirus.controlcenter"; minSdk 26; targetSdk 34; versionCode 1; versionName "0.1.0" } }
+dependencies { implementation 'com.squareup.retrofit2:retrofit:2.9.0' }

@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  title: Control Center API
+  version: 1.0.0
+  description: Go + Supabase backend — single contract for all native clients.
+servers:
+  - url: http://localhost:8080/v1
+paths:
+  /healthz:
+    get:
+      summary: Health
+      responses:
+        '200': { description: ok }
+  /workspaces:
+    get:
+      summary: List workspaces
+      responses: { '200': { description: ok } }
+    post:
+      summary: Create workspace
+      responses: { '201': { description: created } }
+  /workspaces/{id}/members:
+    get: { summary: List members, responses: { '200': { description: ok } } }
+    patch: { summary: Update member role, responses: { '200': { description: ok } } }
+  /channels:
+    get: { summary: List channels, responses: { '200': { description: ok } } }
+    post: { summary: Create channel, responses: { '201': { description: created } } }
+  /channels/{id}/messages:
+    get: { summary: List messages (cursor paginated), responses: { '200': { description: ok } } }
+    post: { summary: Post message, responses: { '201': { description: created } } }
+  /search:
+    get: { summary: Search messages, parameters: [{ name: q, in: query, required: true, schema: { type: string } }], responses: { '200': { description: ok } } }
+  /projects:
+    get: { summary: List projects, responses: { '200': { description: ok } } }
+    post: { summary: Create project, responses: { '201': { description: created } } }
+  /projects/{id}/tasks:
+    get: { summary: List tasks, responses: { '200': { description: ok } } }
+    post: { summary: Create task, responses: { '201': { description: created } } }
+  /projects/{id}/link-github:
+    post: { summary: Link GitHub repo, responses: { '200': { description: ok } } }
+  /webhooks/github:
+    post: { summary: GitHub App webhook, responses: { '200': { description: ok } } }
+  /calendars:
+    get: { summary: List calendars, responses: { '200': { description: ok } } }
+    post: { summary: Create calendar, responses: { '201': { description: created } } }
+  /events:
+    get: { summary: List events, responses: { '200': { description: ok } } }
+    post: { summary: Create event, responses: { '201': { description: created } } }
+  /oauth/google/start:
+    get: { summary: Start Google OAuth, responses: { '302': { description: redirect } } }
+  /oauth/google/callback:
+    get: { summary: Google OAuth callback, responses: { '200': { description: ok } } }
+  /agents:
+    get: { summary: List agents, responses: { '200': { description: ok } } }
+    post: { summary: Register agent (hermes_endpoint + persona), responses: { '201': { description: created } } }
+  /agents/{id}/invite:
+    post: { summary: Invite agent to scope, responses: { '200': { description: ok } } }
+  /agents/{id}/message:
+    post: { summary: Proxy message to Hermes, responses: { '200': { description: ok } } }
+  /agents/{id}/events:
+    post: { summary: Inbound from Hermes, responses: { '200': { description: ok } } }
+  /invites/{token}/accept:
+    post: { summary: Accept invite, responses: { '200': { description: ok } } }

@@ -1,0 +1,41 @@
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+port = 54325
+file_size_limit = "25MiB"
+
+[auth]
+enabled = true
+port = 54325
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:8080/v1/oauth/google/callback"]
+jwt_expiry = 900
+enable_signup = true
+enable_confirmations = false
+enable_manual_linking = true
+[auth.external.github]
+enabled = true
+[auth.external.google]
+enabled = true
+
+[realtime]
+enabled = true
+port = 54325

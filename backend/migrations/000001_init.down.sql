@@ -1,0 +1,1 @@
+drop table if exists audit_log, webhook_dead_letters, oauth_states, invites, agent_memberships, agents, events, calendars, github_repo_links, github_installations, task_comments, tasks, projects, bots, slash_commands, webhooks, reactions, messages, channel_permissions, channel_members, channels, workspace_members, workspaces, profiles cascade;
