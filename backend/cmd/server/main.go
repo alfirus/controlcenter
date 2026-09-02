@@ -83,11 +83,9 @@ func main() {
 			_ = json.NewEncoder(w).Encode(map[string]string{"version": "v1", "docs": "/api/openapi.yaml"})
 		})
 
-		// authenticated routes — skip auth if no secret (dev/CI)
+		// authenticated routes — Middleware handles dev/CI when SUPABASE_JWT_SECRET empty (injects dev user)
 		r.Group(func(r chi.Router) {
-			if cfg.SupabaseJWTSecret != "" {
-				r.Use(auth.Middleware(cfg.SupabaseJWTSecret))
-			}
+			r.Use(auth.Middleware(cfg.SupabaseJWTSecret))
 			commH.Routes(r)
 			projH.Routes(r)
 			calH.Routes(r)

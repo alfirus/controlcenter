@@ -25,13 +25,23 @@ Omarchy is covered by the Ubuntu Flatpak — no separate folder. See `docs/BLUEP
 ## Quick Start (Backend + Supabase local)
 
 ```bash
-# prereqs: Docker, Go 1.22+, Supabase CLI (npm i -g supabase), golang-migrate, sqlc
-cp backend/.env.example backend/.env  # fill DATABASE_URL, SUPABASE_JWT_SECRET, GITHUB_*, GOOGLE_*
-make supabase:start   # supabase start (or docker compose up db)
-make migrate:up
-go run ./backend/cmd/server
+# prereqs: Docker, Go 1.22+, golang-migrate, psql (brew install postgresql@15 golang-migrate)
+cp backend/.env.example backend/.env  # DATABASE_URL already points to docker db
+
+# 1. DB (docker postgres with supabase extensions) + migrations + seed
+make db:up
+DATABASE_URL=postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable make migrate:up
+DATABASE_URL=postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable make migrate:seed
+
+# 2. Backend (dev mode: SUPABASE_JWT_SECRET empty → dev user 000...001)
+DATABASE_URL=postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable go run ./backend/cmd/server
 # health: curl http://localhost:8080/healthz
-# api:    http://localhost:8080/v1/  (OpenAPI at backend/api/openapi.yaml)
+# api:    curl http://localhost:8080/v1/workspaces | jq
+# openapi: backend/api/openapi.yaml
+
+# 3. Verify seeded data
+# curl "http://localhost:8080/v1/channels?workspace_id=11111111-1111-1111-1111-111111111111" | jq
+# curl "http://localhost:8080/v1/hosts?workspace_id=11111111-1111-1111-1111-111111111111" | jq
 ```
 
 Full backend detail: `docs/BLUEPRINT.md:3`.

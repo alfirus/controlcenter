@@ -139,13 +139,14 @@ create table agents (
 );
 alter table messages add constraint messages_agent_fk foreign key (agent_id) references agents(id);
 create table agent_memberships (
-  agent_id uuid references agents(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references agents(id) on delete cascade,
   workspace_id uuid not null references workspaces(id) on delete cascade,
   channel_id uuid references channels(id) on delete cascade,
   project_id uuid references projects(id) on delete cascade,
   role text not null default 'agent' check (role = 'agent'),
-  created_at timestamptz default now(),
-  primary key (agent_id, workspace_id, coalesce(channel_id,'00000000-0000-0000-0000-000000000000'), coalesce(project_id,'00000000-0000-0000-0000-000000000000'))
+  created_at timestamptz not null default now(),
+  unique (agent_id, workspace_id, channel_id, project_id)
 );
 
 create table invites (token text primary key, workspace_id uuid references workspaces(id), role text not null, expires_at timestamptz not null, created_at timestamptz default now());

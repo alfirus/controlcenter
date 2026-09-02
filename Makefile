@@ -10,6 +10,15 @@ migrate\:up:
 migrate\:down:
 	migrate -path backend/migrations -database "$$DATABASE_URL" down 1
 
+migrate\:seed:
+	psql "$$DATABASE_URL" -f backend/migrations/seed.sql
+
+db\:up:
+	docker compose up -d db
+
+db\:down:
+	docker compose down
+
 supabase\:start:
 	supabase start
 
