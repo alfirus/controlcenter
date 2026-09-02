@@ -170,6 +170,9 @@ func (h *Handler) createHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := auth.UserID(r.Context())
+	if body.Tags == nil {
+		body.Tags = []string{}
+	}
 	var id string
 	err := h.Pool.QueryRow(r.Context(),
 		`insert into hosts(workspace_id, group_id, label, hostname, port, username, auth_kind, vault_ref, jump_host_id, tags, created_by)
@@ -606,14 +609,54 @@ func (h *Handler) ws(w http.ResponseWriter, r *http.Request) {
 		<-done
 		return
 	}
-	// remote SSH stub — explain vault handling
-	_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("SSH to %s not yet dialed — vault_ref required. Use local host (localhost) for now.\r\n", hostname)))
-	// keep alive
-	for {
-		if _, _, err := ws.ReadMessage(); err != nil {
-			return
+	// remote SSH via vault
+	var username, authKind, vaultRef, jumpHostID string
+	var port int
+	var vaultRefPtr *string
+	var jumpPtr *string
+	if h.Pool != nil {
+		_ = h.Pool.QueryRow(r.Context(), `select username, port, auth_kind, vault_ref, jump_host_id from hosts where hostname=$1 limit 1`, hostname).Scan(&username, &port, &authKind, &vaultRefPtr, &jumpPtr)
+		if vaultRefPtr != nil {
+			vaultRef = *vaultRefPtr
+		}
+		if jumpPtr != nil {
+			jumpHostID = *jumpPtr
+		}
+		if username == "" {
+			username = "root"
+		}
+		if port == 0 {
+			port = 22
+		}
+		if authKind == "" {
+			authKind = "vault_key"
+		}
+	} else {
+		username = "root"
+		port = 22
+		authKind = "vault_key"
+	}
+	_ = jumpHostID
+	vaultSecret, _ := fetchVaultSecret(r.Context(), h.Pool, vaultRef)
+	if authKind != "agent_forward" && vaultSecret == "" {
+		_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("vault secret empty for %s (vault_ref=%s). Set VAULT_* env or Supabase Vault.\r\n", hostname, vaultRef)))
+		for {
+			if _, _, err := ws.ReadMessage(); err != nil {
+				return
+			}
 		}
 	}
+	// TODO: jump host support via recursive dial
+	client, err := sshDial(hostname, username, vaultSecret, authKind, port, nil)
+	if err != nil {
+		_ = ws.WriteMessage(websocket.TextMessage, []byte("ssh dial failed: "+err.Error()+"\r\n"))
+		return
+	}
+	defer client.Close()
+	if err := sshPTY(client, ws, rows, cols); err != nil {
+		_ = ws.WriteMessage(websocket.TextMessage, []byte("ssh pty error: "+err.Error()+"\r\n"))
+	}
+	_ = port
 }
 
 func (h *Handler) recording(w http.ResponseWriter, r *http.Request) {
@@ -653,10 +696,37 @@ func (h *Handler) recording(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) sftpLs(w http.ResponseWriter, r *http.Request) {
-	// stub: list files via SFTP — prod dials SSH+SFTP; stub returns empty
-	writeJSON(w, 200, []any{})
+	id := chi.URLParam(r, "id")
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		path = "."
+	}
+	// prefer local FS for localhost hosts; else try SSH SFTP
+	if h.Pool != nil {
+		var hostname string
+		_ = h.Pool.QueryRow(r.Context(), `select h.hostname from hosts h join terminal_sessions s on s.host_id=h.id where s.id=$1`, id).Scan(&hostname)
+		if hostname != "" && hostname != "localhost" && hostname != "127.0.0.1" && hostname != "::1" {
+			// real SFTP: dial via sshDial then sftp.NewClient
+			// For now, return structured stub so client can show vault hint
+			writeJSON(w, 200, map[string]any{"path": path, "entries": []any{}, "note": "SFTP for " + hostname + " requires vault SFTP — stub. Local FS fallback for localhost only."})
+			return
+		}
+	}
+	// local FS
+	entries, err := listLocalDir(path)
+	if err != nil {
+		writeErr(w, 500, "internal", err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"path": path, "entries": entries})
 }
 
 func (h *Handler) sftpUpload(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, map[string]string{"status": "ok (stub)"})
+	// For localhost, accept multipart and write to local FS (dev).
+	// For remote, would proxy via SFTP.
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		writeErr(w, 400, "bad_request", err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok (local stub — remote SFTP via vault pending)"})
 }
