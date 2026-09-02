@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -69,10 +70,12 @@ func (h *Handler) Routes(r chi.Router) {
 
 	r.Post("/ide/collab/sessions", h.createCollab)
 	r.Get("/ide/collab/sessions/{id}", h.getCollab)
-	r.Get("/ide/collab/{id}", h.collabStream) // WS in prod, SSE stub
+	r.Get("/ide/collab/{id}", h.collabStream) // SSE fallback or WS
+	r.Get("/ide/collab/{id}/ws", h.collabWS)  // WS CRDT broadcast
 
 	r.Get("/ide/lsp/servers", h.listLSP)
 	r.Post("/ide/lsp/{language}", h.lspProxy)
+	r.Get("/ide/lsp/{language}/ws", h.LSPProxyWS)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -435,8 +438,14 @@ func (h *Handler) getCollab(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, c)
 }
 
+var collabUpgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+
 func (h *Handler) collabStream(w http.ResponseWriter, r *http.Request) {
-	// SSE stub for CRDT sync (prod upgrades to WebSocket)
+	// SSE fallback unless Upgrade: websocket
+	if r.Header.Get("Upgrade") == "websocket" || r.Header.Get("Sec-WebSocket-Key") != "" {
+		h.collabWS(w, r)
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -451,6 +460,42 @@ func (h *Handler) collabStream(w http.ResponseWriter, r *http.Request) {
 	select {
 	case <-r.Context().Done():
 	case <-time.After(2 * time.Second):
+	}
+}
+
+func (h *Handler) collabWS(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	// validate collab exists (best effort)
+	if h.Pool != nil {
+		var exists string
+		_ = h.Pool.QueryRow(r.Context(), `select id from ide_collab_sessions where id=$1`, id).Scan(&exists)
+	}
+	ws, err := collabUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+	defer hub.remove(id, ws)
+	hub.add(id, ws)
+	// send open event
+	_ = ws.WriteJSON(map[string]any{"type": "open", "collab_id": id, "ts": time.Now().Unix()})
+	for {
+		mt, data, err := ws.ReadMessage()
+		if err != nil {
+			return
+		}
+		// broadcast to peers (CRDT patch, cursor, etc.)
+		hub.broadcast(id, mt, data, ws)
+		// optional: persist crdt_state periodically
+		if mt == websocket.TextMessage {
+			var msg map[string]any
+			if json.Unmarshal(data, &msg) == nil {
+				if msg["type"] == "patch" && h.Pool != nil {
+					// best-effort store last patch as crdt_state
+					_, _ = h.Pool.Exec(r.Context(), `update ide_collab_sessions set crdt_state=$2 where id=$1`, id, msg)
+				}
+			}
+		}
 	}
 }
 
