@@ -1,6 +1,6 @@
 # Control Center
 
-> Programmer-focused control center — Mattermost-grade communication, GitHub-synced Projects/Tasks, Google Calendar (team + personal), inviteable AI personas (Hermes/Sofia), and RBAC user management. Pure black & white, minimalist, native everywhere. AGPL-3.0.
+> Programmer-focused control center — Mattermost-grade communication, GitHub-synced Projects/Tasks, Google Calendar (team + personal), Termius-grade Terminal (SSH/host management + PTY), Zed-grade IDE (collab CRDT + LSP), inviteable AI personas (Hermes/Sofia), and RBAC user management. Pure black & white, minimalist, native everywhere. AGPL-3.0.
 
 ## Structure
 
@@ -38,7 +38,7 @@ Full backend detail: `docs/BLUEPRINT.md:3`.
 
 ## Clients
 
-Each native app is thin — API + Supabase Realtime (`postgres_changes`). Shared IA: sidebar (Workspaces→Channels/DMs/GMs + Projects) | center (Messages/Tasks/Calendar) | right (Thread/Agent panel). Theme via `design-tokens.json` (see `docs/UI-UX.md`).
+Each native app is thin — API + Supabase Realtime (`postgres_changes`). Shared IA: sidebar (Workspaces→Channels/DMs/GMs + Projects + Terminal + IDE) | center (Messages/Tasks/Calendar/Terminal/IDE) | right (Thread/Agent panel). Theme via `design-tokens.json` (see `docs/UI-UX.md`). Terminal (Termius parity) via native PTY (ConPTY/libvte/swift-pty); IDE (Zed parity) via native buffer + LSP. See `docs/BLUEPRINT.md:3.5-3.7`.
 
 ```bash
 make gen              # regenerate OpenAPI server/client stubs
