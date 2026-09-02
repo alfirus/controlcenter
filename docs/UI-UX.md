@@ -23,14 +23,15 @@ Minimalist, programmer-first. No accent color — hierarchy only via weight, siz
 ## 3. Layout (shared IA across all platforms)
 ```
 ┌─ Sidebar (240px) ─┬────── Center ──────┬─ Right Panel (320px, collapsible) ─┐
-│ Workspaces        │ Channel / Tasks /  │ Thread / Agent panel / Details     │
-│ Channels / DMs/GMs│ Calendar           │                                      │
-│ Projects          │                    │                                      │
+│ Workspaces        │ Channel / Tasks /  │ Thread / Agent / Terminal / IDE    │
+│ Channels / DMs/GMs│ Calendar / Terminal│ Details                            │
+│ Projects          │ IDE                │                                      │
+│ Terminal │ IDE    │                    │                                      │
 └───────────────────┴────────────────────┴──────────────────────────────────────┘
 ```
-- Sidebar: workspace switcher (top), channels grouped (open/private/DM/GM), projects below, collapse to icons on narrow widths.
-- Center: message list (virtualized), task board (list/kanban toggle), calendar month/week.
-- Right: thread, task detail, or agent panel — one at a time.
+- Sidebar: workspace switcher (top), channels grouped (open/private/DM/GM), projects below, **Terminal** (host groups + sessions) and **IDE** (workspaces) as top-level nav (Termius + Zed parity), collapse to icons on narrow widths.
+- Center: message list (virtualized), task board (list/kanban toggle), calendar month/week, **terminal PTY** (multi-tab, split panes client-side, B&W xterm), **IDE editor** (file tree left, buffer center, minimap off, command palette).
+- Right: thread, task detail, agent panel, **terminal inspector** (SFTP/recording) or **IDE outline/LSP diagnostics** — one at a time.
 
 ## 4. Type Scale
 - Workspace/channel title: 13 semibold #1A1A1A
@@ -47,6 +48,8 @@ Minimalist, programmer-first. No accent color — hierarchy only via weight, siz
 - **Task row**: mono status pill (TODO/DOING/DONE) with border only, no fill, 10 mono.
 - **Calendar**: grid with 1px borders, today = inverted (black bg white text), event = left border 2px black.
 - **Agent badge**: `◉ Sofia` mono 11 #666666, persona tag bordered.
+- **Terminal**: host row 32h mono 12, group header 11 semibold uppercase #666666; PTY view black bg (light: #0A0A0A) white mono 13, cursor block white, selection #333; tab bar border-bottom 1px #E5E5E5, active tab black bg white text; SFTP file row 28h mono 12 with 1px divider.
+- **IDE**: file tree row 24h mono 12, selected = black bg white text; buffer line numbers 11 mono #888888 gutter 40px; editor mono 13 #1A1A1A; diagnostic underline 1px dotted #000 (no color), LSP completion popup bordered 1px #000, no shadow.
 
 ## 6. Motion
 - No color transitions. Only 120ms ease for panel open/close and message-in. No bounce.
@@ -60,19 +63,23 @@ Minimalist, programmer-first. No accent color — hierarchy only via weight, siz
 ## 8. States (Empty / Loading / Error)
 - Empty channel: centered mono 13 #888888 "No messages yet — send the first one." + primary button "New message".
 - Empty tasks: dashed border card, "No tasks — create one or link GitHub."
+- Empty terminal: dashed card "No hosts — add one" + "Create session" when host selected; PTY disconnected shows `● disconnected` mono 11.
+- Empty IDE: dashed card "No workspaces — create one" + "Open buffer".
 - Loading: skeleton lines (border #F2F2F2, no shimmer color) — 3 rows, 16h each.
 - Error: inline bordered alert black border, mono 12, retry link underlined. Toast for transient errors (top-right, black bg white text, auto-dismiss 4s).
-- Unsent/offline: message row shows `◌` mono 10 #888888 + "Offline — queued."
+- Unsent/offline: message row shows `◌` mono 10 #888888 + "Offline — queued." Terminal requires live WS — shows `offline` banner; IDE buffers show `● unsaved` + queued sync.
 
 ## 9. Accessibility & Keyboard (Programmer UX)
 - Contrast: text #1A1A1A on #FFFFFF = 17:1. All interactive targets ≥ 32px, focus ring 2px solid #000 (offset 2px).
 - Screen reader: semantic roles per platform, avatar `alt` = display name, channel `aria-label` includes unread count.
 - Keyboard (all platforms):
-  - `Cmd/Ctrl+K` quick switcher (channels/tasks/people)
+  - `Cmd/Ctrl+K` quick switcher (channels/tasks/people/hosts/buffers)
   - `Cmd/Ctrl+B` toggle sidebar, `Cmd/Ctrl+.` toggle right panel
   - `R` reply in thread, `E` edit last message, `⌘+Enter` send
-  - `G then C` calendar, `G then P` projects, `J/K` next/prev channel
+  - `G then C` calendar, `G then P` projects, `G then T` terminal, `G then I` IDE, `J/K` next/prev channel/host/buffer
   - `/` slash command palette, `@` mention autocomplete, `:` emoji picker (mono search)
+  - Terminal: `Cmd+T` new tab, `Cmd+W` close, `Cmd+D` split, `Cmd+Shift+C` copy
+  - IDE: `Cmd+P` file palette, `Cmd+Shift+F` search, `F12` go to definition, `Esc` close palette
   - Full tab order, Esc closes panels/modals.
 
 ## 10. Notifications & Presence

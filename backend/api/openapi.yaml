@@ -60,3 +60,59 @@ paths:
     post: { summary: Inbound from Hermes, responses: { '200': { description: ok } } }
   /invites/{token}/accept:
     post: { summary: Accept invite, responses: { '200': { description: ok } } }
+  /hosts:
+    get: { summary: List hosts (Termius), parameters: [{ name: workspace_id, in: query, required: true, schema: { type: string } }], responses: { '200': { description: ok } } }
+    post: { summary: Create host (vault_ref, never raw key), responses: { '201': { description: created } } }
+  /hosts/{id}:
+    get: { summary: Get host, responses: { '200': { description: ok } } }
+    patch: { summary: Update host, responses: { '200': { description: ok } } }
+    delete: { summary: Delete host, responses: { '200': { description: ok } } }
+  /host-groups:
+    get: { summary: List host groups, responses: { '200': { description: ok } } }
+    post: { summary: Create host group, responses: { '201': { description: created } } }
+  /ssh-keys:
+    get: { summary: List SSH keys (vault refs), responses: { '200': { description: ok } } }
+    post: { summary: Register SSH key vault ref, responses: { '201': { description: created } } }
+  /terminal/sessions:
+    get: { summary: List terminal sessions, responses: { '200': { description: ok } } }
+    post: { summary: Create PTY session (gateway), responses: { '201': { description: created } } }
+  /terminal/sessions/{id}:
+    get: { summary: Get session, responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/close:
+    post: { summary: Close session, responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/stream:
+    get: { summary: PTY stream (SSE/WS), responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/recording:
+    get: { summary: Session recording, responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/resize:
+    post: { summary: Resize PTY, responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/sftp/ls:
+    get: { summary: SFTP ls, responses: { '200': { description: ok } } }
+  /terminal/sessions/{id}/sftp/upload:
+    post: { summary: SFTP upload, responses: { '200': { description: ok } } }
+  /ide/workspaces:
+    get: { summary: List IDE workspaces, responses: { '200': { description: ok } } }
+    post: { summary: Create IDE workspace, responses: { '201': { description: created } } }
+  /ide/workspaces/{id}:
+    get: { summary: Get IDE workspace, responses: { '200': { description: ok } } }
+  /ide/workspaces/{id}/tree:
+    get: { summary: File tree, responses: { '200': { description: ok } } }
+  /ide/workspaces/{id}/search:
+    get: { summary: Ripgrep-style search, responses: { '200': { description: ok } } }
+  /ide/buffers:
+    get: { summary: List buffers, responses: { '200': { description: ok } } }
+    post: { summary: Create buffer, responses: { '201': { description: created } } }
+  /ide/buffers/{id}:
+    get: { summary: Get buffer, responses: { '200': { description: ok } } }
+    put: { summary: Update buffer (If-Match hash), responses: { '200': { description: ok } } }
+    delete: { summary: Delete buffer, responses: { '200': { description: ok } } }
+  /ide/collab/sessions:
+    post: { summary: Create collab session (CRDT), responses: { '201': { description: created } } }
+  /ide/collab/sessions/{id}:
+    get: { summary: Get collab session, responses: { '200': { description: ok } } }
+  /ide/collab/{id}:
+    get: { summary: Collab stream (SSE/WS), responses: { '200': { description: ok } } }
+  /ide/lsp/servers:
+    get: { summary: List LSP servers, responses: { '200': { description: ok } } }
+  /ide/lsp/{language}:
+    post: { summary: LSP proxy, responses: { '200': { description: ok } } }

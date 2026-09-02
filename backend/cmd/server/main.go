@@ -19,7 +19,9 @@ import (
 	"github.com/alfirus/controlcenter/backend/internal/comm"
 	"github.com/alfirus/controlcenter/backend/internal/config"
 	gh "github.com/alfirus/controlcenter/backend/internal/github"
+	"github.com/alfirus/controlcenter/backend/internal/ide"
 	"github.com/alfirus/controlcenter/backend/internal/projects"
+	"github.com/alfirus/controlcenter/backend/internal/terminal"
 )
 
 func main() {
@@ -69,6 +71,8 @@ func main() {
 	calH := &calendar.Handler{Pool: pool}
 	agentH := &agents.Handler{Pool: pool}
 	ghH := &gh.Handler{Pool: pool, WebhookSecret: cfg.GithubWebhookSecret}
+	termH := &terminal.Handler{Pool: pool}
+	ideH := &ide.Handler{Pool: pool}
 
 	// public webhook (HMAC verified, no JWT) — POST /v1/webhooks/github
 	r.Route("/v1/webhooks", func(r chi.Router) { r.Post("/github", ghH.Webhook) })
@@ -88,6 +92,8 @@ func main() {
 			projH.Routes(r)
 			calH.Routes(r)
 			agentH.Routes(r)
+			termH.Routes(r)
+			ideH.Routes(r)
 
 			r.Get("/github/install", ghH.Install)
 
