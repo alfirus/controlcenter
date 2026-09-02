@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/alfirus/controlcenter/backend/internal/auth"
@@ -61,7 +62,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/terminal/sessions", h.listSessions)
 	r.Get("/terminal/sessions/{id}", h.getSession)
 	r.Post("/terminal/sessions/{id}/close", h.closeSession)
-	r.Get("/terminal/sessions/{id}/stream", h.stream) // WS/SSE — stubbed as SSE/NDJSON for now
+	r.Get("/terminal/sessions/{id}/stream", h.stream) // SSE fallback or WS upgrade (real PTY)
+	r.Get("/terminal/sessions/{id}/ws", h.ws)          // WebSocket PTY (preferred)
 	r.Get("/terminal/sessions/{id}/recording", h.recording)
 	r.Post("/terminal/sessions/{id}/resize", h.resize)
 
@@ -511,9 +513,21 @@ func (h *Handler) resize(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
 
+var wsUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func (h *Handler) isWebSocket(r *http.Request) bool {
+	return r.Header.Get("Upgrade") == "websocket" || r.Header.Get("Sec-WebSocket-Key") != ""
+}
+
 func (h *Handler) stream(w http.ResponseWriter, r *http.Request) {
+	if h.isWebSocket(r) {
+		h.ws(w, r)
+		return
+	}
 	id := chi.URLParam(r, "id")
-	// SSE stub: client upgrades to WebSocket in prod; here we return NDJSON/SSE with buffered output
+	// SSE fallback: buffered output
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -529,7 +543,6 @@ func (h *Handler) stream(w http.ResponseWriter, r *http.Request) {
 	if exists {
 		data = s.buf
 	} else if h.Pool != nil {
-		// check db session exists
 		var status string
 		err := h.Pool.QueryRow(r.Context(), `select status from terminal_sessions where id=$1`, id).Scan(&status)
 		if err != nil {
@@ -543,10 +556,63 @@ func (h *Handler) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, "data: %s\n\n", string(data))
 	flusher.Flush()
-	// keepalive tick then close (client reconnects for WS prod)
 	select {
 	case <-r.Context().Done():
 	case <-time.After(2 * time.Second):
+	}
+}
+
+func (h *Handler) ws(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	// resolve host: local shell for localhost, else SSH stub
+	var hostname string
+	var rows, cols int = 24, 80
+	if h.Pool != nil {
+		var hostID string
+		_ = h.Pool.QueryRow(r.Context(), `select host_id, rows, cols from terminal_sessions where id=$1`, id).Scan(&hostID, &rows, &cols)
+		if hostID != "" {
+			_ = h.Pool.QueryRow(r.Context(), `select hostname from hosts where id=$1`, hostID).Scan(&hostname)
+		}
+	} else {
+		h.mu.Lock()
+		if s, ok := h.sessions[id]; ok {
+			hostname = "localhost"
+			rows, cols = s.Rows, s.Cols
+		}
+		h.mu.Unlock()
+	}
+	// audit
+	if h.Pool != nil {
+		userID := auth.UserID(r.Context())
+		_, _ = h.Pool.Exec(r.Context(), `insert into audit_log(actor_id, action, target) values($1,'terminal.ws', $2)`, userID, id)
+	}
+
+	ws, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer ws.Close()
+
+	// local PTY for localhost/dev; remote SSH stub sends message
+	if hostname == "" || hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" {
+		ps, err := startLocalPTY("", rows, cols)
+		if err != nil {
+			_ = ws.WriteMessage(websocket.TextMessage, []byte("failed to start pty: "+err.Error()))
+			return
+		}
+		defer ps.close()
+		done := make(chan struct{})
+		ps.bridge(ws, done)
+		<-done
+		return
+	}
+	// remote SSH stub — explain vault handling
+	_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("SSH to %s not yet dialed — vault_ref required. Use local host (localhost) for now.\r\n", hostname)))
+	// keep alive
+	for {
+		if _, _, err := ws.ReadMessage(); err != nil {
+			return
+		}
 	}
 }
 
